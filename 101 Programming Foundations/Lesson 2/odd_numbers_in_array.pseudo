@@ -1,0 +1,13 @@
+START
+
+GET array of numbers
+
+SET iterator = 1
+
+WHILE iterator < length of array
+  IF iterator is odd
+    APPEND new_array = array element at position of 'iterator'
+  END
+END
+
+PRINT new_array

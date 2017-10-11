@@ -1,0 +1,8 @@
+START
+
+SET first_int
+SET second_int
+
+PRINT first_int + second_int
+
+END

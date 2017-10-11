@@ -1,0 +1,13 @@
+START
+
+GET array
+
+SET iterator = 1
+
+WHILE iterator < lengeth of array
+  concatenated_string = concatenated_string + element in array at position 'iterator'
+
+  iterator += 1
+END
+
+PRINT concatenated_string
