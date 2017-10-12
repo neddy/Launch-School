@@ -1,0 +1,19 @@
+# calculator_messages.yml
+ask_first_number: 'Please enter the first number:'
+ask_second_number: 'Please enter the second number:'
+valid_num_error: 'A valid number was not entered...'
+operation_prompt: |
+  Please enter the operation
+  1) add
+  2) Subtract
+  3) Multiply
+  4) Divide
+valid_operator_error: 'Please enter 1, 2, 3, or 4.'
+preforming_operation: "your numbers now..."
+result: "The result is:"
+run_again_prompt: 'Would you like to preform another calculation?'
+thank_you: 'Thank you, bye.'
+adding: 'Adding'
+subtracting: 'Subtracting'
+multiplying: 'Multiplying'
+dividing: 'Dividing'

@@ -8,7 +8,6 @@ output hte result
 
 =end
 
-
 puts 'Please enter the first number:'
 number1 = gets.chomp
 puts 'Please enter the second number:'
