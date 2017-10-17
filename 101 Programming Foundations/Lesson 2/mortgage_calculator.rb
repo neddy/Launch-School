@@ -12,102 +12,83 @@ def float?(input)
   /\d/.match(input) && /^\d*\.?\d*$/.match(input)
 end
 
-def two_decimal_places(input)
+def two_decimal_places?(input)
   # Check if float has 2 or less decimal places
-  input.to_f.round(2).to_s == input || input.to_f.round(2).to_s == '0' + input
+  format('%.2f', input) == input || format('%.2f', input) == '0' + input
 end
 
-def loan_amount
-  amount = ''
-  prompt("Please enter the loan amount in whole dollars excluding the '$' and any decimals.")
+def enter_integer
+  number = ''
   loop do
-    amount = gets.chomp
-    if integer?(amount)
-      break if amount.to_i > 0
-      prompt('Please enter an amount great than 0')
-    else
-      prompt("Please only enter whole numbers without any symbols, please try again...")
-    end
+    number = gets.chomp
+    break if integer?(number)
+    prompt("Please only enter whole numbers without any symbols,"\
+      " please try again...")
   end
-  amount.to_i
+  number.to_i
 end
 
-def interest_rate
-  rate = ''
-  prompt("Please enter the interest rate. You can enter an interst rate with up"\
-    " to 2 decimal places. eg: 5.55 (Please exclude the '%' sign.)")
+def enter_number
+  number = ''
   loop do
-    loop do
-      rate = gets.chomp
-      break if float?(rate) || integer?(rate)
-      prompt("Please only enter valid numbers without any symbols. Please try again...")
-    end
-    if integer?(rate) || two_decimal_places(rate)
+    number = gets.chomp
+    break if float?(number) || integer?(number)
+    prompt("Please only enter valid numbers without any symbols."\
+      " Please try again...")
+  end
+  number
+end
+
+def enter_number_2_decimals
+  rate = ''
+  loop do
+    rate = enter_number()
+    if integer?(rate) || two_decimal_places?(rate)
       break if rate.to_f >= 0
       prompt('Please enter an interest rate of 0 or greater.')
     else
-      prompt('Please only enter numbers with up to 2 decimal places, please try again...')
+      prompt('Please only enter numbers with up to 2 decimal places,'\
+        ' please try again...')
     end
   end
   rate.to_f
 end
 
+def loan_amount
+  prompt("Please enter the loan amount in whole dollars excluding the '$'"\
+    " and any decimals.")
+  amount = 0
+  loop do
+    amount = enter_integer()
+    break if amount > 0
+    prompt('Please enter an amount great than 0.')
+  end
+  amount
+end
+
+def interest_rate
+  prompt("Please enter the interest rate. You can enter an interst rate"\
+    " with up to 2 decimal places. eg: 5.55 (Please exclude the '%' sign.)")
+  enter_number_2_decimals
+end
+
 def loan_duration
   duration_months = 0
+  prompt('Please enter the loan duration in years and / or months below:')
   loop do
-    prompt('Please enter the loan duration in years and / or months below:')
-    loop do
-      prompt('Please enter the number of years')
-      years = gets.chomp
-      if integer?(years)
-        duration_months = years.to_i * 12
-        break
-      end
-      break if years == ''
-      prompt("Please only enter whole numbers, without any symbols or letters."\
-        " Please try again...")
-    end
-    loop do
-      prompt('Please enter the number of months')
-      months = gets.chomp
-      if integer?(months)
-        duration_months += months.to_i
-        break
-      end
-      break if months == ''
-      prompt("Please only enter whole numbers, without any symbols or letters."\
-        " Please try again...")
-    end
+    prompt('Please enter the number of years')
+    duration_months = enter_integer() * 12
+    prompt('Please enter the number of months')
+    duration_months += enter_integer()
     break if duration_months > 0
     prompt('You must enter a loan duration and it must be greater than 0')
   end
   duration_months
 end
 
-def details_from_user
-  prompt('Welcome to the mortgage / loan calculator')
-  amount, rate, duration_months = 0
-  loop do
-    amount = loan_amount()
-    rate = interest_rate()
-    duration_months = loan_duration()
-    prompt("You have entered the following details:")
-    prompt('----------------------------------------')
-    prompt("Loan amount  :    $#{amount}")
-    prompt("Interest rate:    #{rate}%")
-    prompt("Loan duration:    #{duration_months / 12} years #{duration_months % 12} months")
-    prompt('----------------------------------------')
-    prompt('Are these details correct? (y/n)')
-    continue = gets.chomp.downcase
-    break if continue.start_with?('y')
-    prompt('Please enter the details again:')
-  end
-  return amount, rate, duration_months
-end
-
 def payment_calculator(amount, rate, duration_months)
   if rate == 0
-    return amount.to_f / duration_months
+    amount.to_f / duration_months
   else
     monthly_rate = (rate / 12) / 100
     p = amount
@@ -117,8 +98,27 @@ def payment_calculator(amount, rate, duration_months)
   end
 end
 
-# Create loan schedule which will show monthly figures, broken up into interest, pricipal and amount outstanding.
-# The loan schedule should always end with the outstanding amount being equal to 0, this was a good way for me to test outputs.
+def format_dollars(num)
+  format('$%.2f ', num)
+end
+
+def format_rate(rate)
+  format('%.2f%', rate)
+end
+
+def continue?
+  loop do
+    continue = gets.chomp.downcase
+    if continue == 'y' || continue == 'yes'
+      return true
+    elsif continue == 'n' || continue == 'no'
+      return false
+    else
+      prompt('please enter either yes or no (y/n)')
+    end
+  end
+end
+
 def loan_schedule(amount, rate, duration_months, monthly_payment)
   amount_owing = amount
   monthly_rate = (rate / 12) / 100
@@ -129,20 +129,25 @@ def loan_schedule(amount, rate, duration_months, monthly_payment)
     amount_owing -= monthly_payment - interest
     loan_schedule << [interest, principal, amount_owing]
   end
-  prompt("Initial loan amount: $#{amount}")
-  printf("|%7s|%15s|%15s|%15s|\n", 'Month ', 'Interest ', 'Principal ', 'Outstanding ')
+  display_loan_schedule(amount, rate, monthly_payment, loan_schedule)
+end
+
+def display_loan_schedule(amount, rate, monthly_payment, loan_schedule)
+  prompt("Initial loan amount:   $#{amount}")
+  prompt("Interest Rate:         #{format_rate(rate)}")
+  prompt("Monthly Payment:       #{format_dollars(monthly_payment)}")
+  printf("|%7s|%15s|%15s|%15s|\n", 'Month ', 'Interest ', 'Principal ',\
+         'Outstanding ')
   puts '---------------------------------------------------------'
   loan_schedule.each_with_index do |loan, month|
-    # prompt("#{month}   |   $#{loan[0].round(2)}   |   $#{loan[1].round(2)}   |   $#{loan[2].round(2)}")
-    printf("|%7s|%15s|%15s|%15s|\n", month.to_s + ' ','$' + '%.2f' % loan[0] + ' ', '$' + '%.2f' % loan[1] + ' ', '$' + '%.2f' % loan[2] + ' ')
+    printf("|%7s|%15s|%15s|%15s|\n", month.to_s, format_dollars(loan[0]),\
+           format_dollars(loan[1]), format_dollars(loan[2]))
   end
 end
 
-# Main logic
 prompt('Welcome to the mortgage / loan calculator')
 amount, rate, duration_months = 0
 
-# Get input from user
 loop do
   amount = loan_amount()
   rate = interest_rate()
@@ -150,20 +155,22 @@ loop do
   prompt("You have entered the following details:")
   prompt('----------------------------------------')
   prompt("Loan amount  :    $#{amount}")
-  prompt("Interest rate:    #{rate}%")
-  prompt("Loan duration:    #{duration_months / 12} years #{duration_months % 12} months")
+  prompt("Interest rate:    #{format_rate(rate)}")
+  prompt("Loan duration:    #{duration_months / 12} years"\
+    " #{duration_months % 12} months")
   prompt('----------------------------------------')
   prompt('Are these details correct? (y/n)')
-  continue = gets.chomp.downcase
-  break if continue.start_with?('y')
-  prompt('Please enter the details again:')
+  break if continue?()
+  prompt('Would you like to re-enter the details and try again? (y/n)')
+  exit unless continue?()
 end
 
 monthly_payment = payment_calculator(amount, rate, duration_months)
+prompt('----------------------------------------')
 prompt("Your monthly payment will be: $#{monthly_payment.round(2)}")
+prompt('----------------------------------------')
 
-prompt('Would you like to print out a loan schedule?')
-do_schedule = gets.chomp.downcase
-if do_schedule.start_with?('y')
+prompt('Would you like to print out a loan schedule? (y/n)')
+if continue?()
   loan_schedule(amount, rate, duration_months, monthly_payment)
 end
