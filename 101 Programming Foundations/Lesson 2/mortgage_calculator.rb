@@ -43,8 +43,8 @@ def interest_rate
       prompt("Please only enter valid numbers without any symbols. Please try again...")
     end
     if integer?(rate) || two_decimal_places(rate)
-      break if rate.to_f > 0
-      prompt('Please enter an interest rate greater than 0')
+      break if rate.to_f >= 0
+      prompt('Please enter an interest rate of 0 or greater.')
     else
       prompt('Please only enter numbers with up to 2 decimal places, please try again...')
     end
@@ -106,11 +106,15 @@ def details_from_user
 end
 
 def payment_calculator(amount, rate, duration_months)
-  monthly_rate = (rate / 12) / 100
-  p = amount
-  j = monthly_rate
-  n = duration_months
-  p * (j / (1 - (1 + j)**-n))
+  if rate == 0
+    return amount.to_f / duration_months
+  else
+    monthly_rate = (rate / 12) / 100
+    p = amount
+    j = monthly_rate
+    n = duration_months
+    p * (j / (1 - (1 + j)**-n))
+  end
 end
 
 # Create loan schedule which will show monthly figures, broken up into interest, pricipal and amount outstanding.
@@ -126,10 +130,11 @@ def loan_schedule(amount, rate, duration_months, monthly_payment)
     loan_schedule << [interest, principal, amount_owing]
   end
   prompt("Initial loan amount: $#{amount}")
-  prompt('Month   |   Interest   |   Principal   |   Outstanding')
-  prompt('------------------------------------------------------')
+  printf("|%7s|%15s|%15s|%15s|\n", 'Month ', 'Interest ', 'Principal ', 'Outstanding ')
+  puts '---------------------------------------------------------'
   loan_schedule.each_with_index do |loan, month|
-    prompt("#{month}   |   $#{loan[0].round(2)}   |   $#{loan[1].round(2)}   |   $#{loan[2].round(2)}")
+    # prompt("#{month}   |   $#{loan[0].round(2)}   |   $#{loan[1].round(2)}   |   $#{loan[2].round(2)}")
+    printf("|%7s|%15s|%15s|%15s|\n", month.to_s + ' ','$' + '%.2f' % loan[0] + ' ', '$' + '%.2f' % loan[1] + ' ', '$' + '%.2f' % loan[2] + ' ')
   end
 end
 
