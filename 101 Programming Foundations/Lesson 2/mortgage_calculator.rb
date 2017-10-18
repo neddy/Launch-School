@@ -14,7 +14,18 @@ end
 
 def two_decimal_places?(input)
   # Check if float has 2 or less decimal places
-  format('%.2f', input) == input || format('%.2f', input) == '0' + input
+  case
+  when format('%.2f', input) == input
+    true
+  when format('%.2f', input) == '0' + input
+    true
+  when format('%.2f', input) == input + '0'
+    true
+  when format('%.2f', input) == '0' + input + '0'
+    true
+  else
+    false
+  end
 end
 
 def enter_integer
