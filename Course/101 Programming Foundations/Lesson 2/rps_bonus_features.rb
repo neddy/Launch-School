@@ -48,7 +48,7 @@ def who_won(player, computer)
   end
 end
 
-system 'clear' || 'cls'. clear
+system('clear') || system('cls')
 prompt('Welsome to Rock, Paper, Scissor, Spock, Lizzard!')
 prompt('Good luck!')
 loop do
@@ -74,7 +74,7 @@ loop do
     prompt("Score: Player #{wins[:player]} Computer #{wins[:computer]}")
     prompt('Press return to continue.')
     gets
-    system 'clear' || 'cls'. clear
+    system('clear') || system('cls')
   end
 
   prompt('--Game Over--')
@@ -91,6 +91,6 @@ loop do
   break unless continue == 'y'
   prompt('Good luck in the next match! Press return to start')
   gets
-  system 'clear' || 'cls'. clear
+  system('clear') || system('cls')
 end
 prompt("Thanks for playing, good bye.")
