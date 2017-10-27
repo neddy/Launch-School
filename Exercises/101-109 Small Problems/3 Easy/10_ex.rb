@@ -1,1 +1,14 @@
 # 10_ex.rb
+
+def palindrome?(input)
+  input == input.reverse
+end
+
+def palindromic_number?(number)
+  palindrome?(number.to_s)
+end
+
+puts palindromic_number?(34543) == true
+puts palindromic_number?(123210) == false
+puts palindromic_number?(22) == true
+puts palindromic_number?(5) == true
