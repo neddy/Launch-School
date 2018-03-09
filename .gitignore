@@ -3,3 +3,4 @@ test.rb
 \# Problem Solving
 \# Create Ex Files
 .rubocop.yml
+.DS_Store
