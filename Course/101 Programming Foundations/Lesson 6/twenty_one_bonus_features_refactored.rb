@@ -25,7 +25,43 @@ def prompt(message)
   puts "=> #{message}"
 end
 
-def blank_card!(cards_display)
+def rank_display(card)
+  if card[0].to_s.to_i == card[0]
+    card[0].to_s[0, 2]
+  else
+    card[0].to_s[0]
+  end
+end
+
+def print_cards(hand, hide_second_card=false)
+  cards_display = create_cards_display(hand)
+  hide_second_card!(cards_display) if hide_second_card
+  cards_display.each do |line|
+    puts line
+  end
+end
+
+# rubocop:disable Metrics/AbcSize
+def create_cards_display(hand)
+  cards_display = ["", "", "", "", "", "", ""]
+  hand.each do |card|
+    rank = rank_display(card)
+    cards_display[0] << "┌----------┐"
+    cards_display[1] << "|#{rank.ljust(2)}        |"
+    cards_display[2] << "|          |"
+    cards_display[3] << "| #{card[1].center(8)} |"
+    cards_display[4] << "|          |"
+    cards_display[5] << "|        #{rank.rjust(2)}|"
+    cards_display[6] << "└----------┘"
+  end
+  cards_display
+end
+# rubocop:enable Metrics/AbcSize
+
+def hide_second_card!(cards_display)
+  cards_display.each do |line|
+    line.slice!(line[-12, 12])
+  end
   cards_display[0] << "┌----------┐"
   cards_display[1] << "|░░░░░░░░░░|"
   cards_display[2] << "|░░░░░░░░░░|"
@@ -36,42 +72,11 @@ def blank_card!(cards_display)
   cards_display
 end
 
-def rank_display(card)
-  if card[0].to_s.to_i == card[0]
-    card[0].to_s[0, 2]
-  else
-    card[0].to_s[0]
-  end
-end
-
-# rubocop:disable Metrics/AbcSize
-# rubocop:disable Metrics/MethodLength
-def print_cards(hand, blank_second=false)
-  cards_display = ["", "", "", "", "", "", ""]
-  hand.each_with_index do |card, index|
-    rank = rank_display(card)
-    next if blank_second && index == 1
-    cards_display[0] << "┌----------┐"
-    cards_display[1] << "|#{rank.ljust(2)}        |"
-    cards_display[2] << "|          |"
-    cards_display[3] << "| #{card[1].center(8)} |"
-    cards_display[4] << "|          |"
-    cards_display[5] << "|        #{rank.rjust(2)}|"
-    cards_display[6] << "└----------┘"
-  end
-  blank_card!(cards_display) if blank_second
-  cards_display.each do |line|
-    puts line
-  end
-end
-# rubocop:enable Metrics/AbcSize
-# rubocop:enable Metrics/MethodLength
-
-def display_hands(player_hand, dealer_hand, hide_dealer=false)
+def display_hands(player_hand, dealer_hand, hide_second_card=false)
   system('clear') || system('cls')
   puts ">>>>>> Twenty-One <<<<<<"
   prompt("Dealer's Hand:")
-  print_cards(dealer_hand, hide_dealer)
+  print_cards(dealer_hand, hide_second_card)
   puts
   prompt("Player's Hand:")
   print_cards(player_hand)
