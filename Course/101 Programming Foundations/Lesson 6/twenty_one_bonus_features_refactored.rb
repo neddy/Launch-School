@@ -1,72 +1,28 @@
-require "pry"
+# require "pry"
 
 CARDS = {
-  2 => { value: [2]},
-  3 => { value: [3]},
-  4 => { value: [4]},
-  5 => { value: [5]},
-  6 => { value: [6]},
-  7 => { value: [7]},
-  8 => { value: [8]},
-  9 => { value: [9]},
-  10 => { value: [10]},
-  "Jack" => { value: [10]},
-  "Queen" => { value: [10]},
-  "King" => { value: [10]},
-  "Ace" => { value: [1, 11]}
+  2 => { value: [2] },
+  3 => { value: [3] },
+  4 => { value: [4] },
+  5 => { value: [5] },
+  6 => { value: [6] },
+  7 => { value: [7] },
+  8 => { value: [8] },
+  9 => { value: [9] },
+  10 => { value: [10] },
+  "Jack" => { value: [10] },
+  "Queen" => { value: [10] },
+  "King" => { value: [10] },
+  "Ace" => { value: [1, 11] }
 }
 
-LIMIT = 21
-HIT_UNLESS = 17
+HAND_LIMIT = 21
+DEALER_HIT_UNLESS = 17
 
 SUITS = ["Hearts", "Diamonds", "Spades", "Clubs"]
 
 def prompt(message)
   puts "=> #{message}"
-end
-
-def initialise_deck()
-  deck = []
-  SUITS.each do |suit|
-    CARDS.keys.each do |rank|
-      deck << {suit: suit, rank: rank}
-    end
-  end
-  deck.shuffle
-end
-
-def get_available_cards(deck)
-  available_cards = []
-  deck.map do |suit|
-    cards = []
-    suit[1].each do |card|
-      if card[1][:used] == 0
-        cards << card[0]
-      end
-    end
-    if !cards.empty?
-      available_cards << [suit[0], cards]
-    end
-  end
-  available_cards.to_h
-end
-
-def pick_card(deck)
-  available_cards = get_available_cards(deck)
-  suit = available_cards.keys.sample
-  card = available_cards[suit].sample
-  deck[suit][card][:used] = 1
-  return { suit: suit, rank: card }, deck
-end
-
-def deal(deck)
-  player_cards = {}
-  dealer_cards = {}
-  (1..2).each do |round|
-    player_cards[round], deck = pick_card(deck)
-    dealer_cards[round], deck = pick_card(deck)
-  end
-  return player_cards, dealer_cards, deck
 end
 
 def blank_card!(cards_display)
@@ -81,10 +37,10 @@ def blank_card!(cards_display)
 end
 
 def rank_display(card)
-  if card[:rank].to_s.to_i == card[:rank]
-    card[:rank].to_s[0, 2]
+  if card[0].to_s.to_i == card[0]
+    card[0].to_s[0, 2]
   else
-    card[:rank].to_s[0]
+    card[0].to_s[0]
   end
 end
 
@@ -92,13 +48,13 @@ end
 # rubocop:disable Metrics/MethodLength
 def print_cards(hand, blank_second=false)
   cards_display = ["", "", "", "", "", "", ""]
-  hand.each do |round, card|
+  hand.each_with_index do |card, index|
     rank = rank_display(card)
-    next if blank_second && round == 2
+    next if blank_second && index == 1
     cards_display[0] << "┌----------┐"
     cards_display[1] << "|#{rank.ljust(2)}        |"
     cards_display[2] << "|          |"
-    cards_display[3] << "| #{card[:suit].center(8)} |"
+    cards_display[3] << "| #{card[1].center(8)} |"
     cards_display[4] << "|          |"
     cards_display[5] << "|        #{rank.rjust(2)}|"
     cards_display[6] << "└----------┘"
@@ -121,38 +77,26 @@ def display_hands(player_hand, dealer_hand, hide_dealer=false)
   print_cards(player_hand)
 end
 
-def hand_value(hand)
-  rounds_use_min = 0
-  loop do
-    value = 0
-    hand.each do |round, card|
-      value += if rounds_use_min < round
-                 CARDS[card[:rank]][:value].max
-               else
-                 CARDS[card[:rank]][:value].min
-               end
-    end
-    if value <= 21
-      return value
-    elsif rounds_use_min == hand.length
-      return value
-    end
-    rounds_use_min += 1
-  end
+def initialise_deck
+  CARDS.keys.product(SUITS).shuffle
 end
 
-def bust?(hand)
-  hand_value(hand) > LIMIT
+def deal(deck)
+  player_hand = []
+  dealer_hand = []
+  2.times do
+    player_hand << deck.pop
+    dealer_hand << deck.pop
+  end
+  return player_hand, dealer_hand, deck
 end
 
 def player_turn(player_hand, dealer_hand, deck)
-  round = 3
   loop do
     display_hands(player_hand, dealer_hand, true)
     action = player_input
     if action == "h"
-      player_hand[round], deck = pick_card(deck)
-      round += 1
+      player_hand << deck.pop
     else
       return player_hand, deck
     end
@@ -175,12 +119,40 @@ def player_input
 end
 
 def dealer_turn(dealer_hand, deck)
-  round = 3
-  while hand_value(dealer_hand) < HIT_UNLESS
-    dealer_hand[round], deck = pick_card(deck)
-    round += 1
+  while hand_value(dealer_hand) < DEALER_HIT_UNLESS
+    dealer_hand << deck.pop
   end
   dealer_hand
+end
+
+def hand_value(hand)
+  values = []
+  hand.each do |card|
+    values << CARDS[card[0]][:value]
+  end
+  score = 0
+  values.each do |value|
+    score += value.max
+  end
+  if score > HAND_LIMIT
+    score = minimise_score(values, score)
+  end
+  score
+end
+
+def minimise_score(values, score)
+  values.each do |value|
+    if value.min != value.max
+      score -= value.max
+      score += value.min
+    end
+    return score if score <= HAND_LIMIT
+  end
+  score
+end
+
+def bust?(hand)
+  hand_value(hand) > HAND_LIMIT
 end
 
 def play_again?
@@ -191,33 +163,56 @@ def play_again?
 end
 
 loop do
-  deck = initialise_deck(suits)
-  player_hand, dealer_hand, deck = deal(deck)
-  player_hand, deck = player_turn(player_hand, dealer_hand, deck)
-  player_score = hand_value(player_hand)
+  scoreboard = { player: 0, dealer: 0 }
+  loop do
+    deck = initialise_deck
+    player_hand, dealer_hand, deck = deal(deck)
 
-  unless player_score > LIMIT
-    dealer_hand = dealer_turn(dealer_hand, deck)
+    player_hand, deck = player_turn(player_hand, dealer_hand, deck)
+    player_score = hand_value(player_hand)
+
+    unless player_score > HAND_LIMIT
+      dealer_hand = dealer_turn(dealer_hand, deck)
+    end
+    dealer_score = hand_value(dealer_hand)
+
+    display_hands(player_hand, dealer_hand)
+
+    if player_score > HAND_LIMIT
+      prompt("Player Bust!! Dealer Wins!")
+      scoreboard[:dealer] += 1
+    elsif dealer_score > HAND_LIMIT
+      prompt("Dealer Bust!! Player Wins!")
+      scoreboard[:player] += 1
+    elsif player_score < dealer_score
+      prompt("Dealer Wins!!")
+      scoreboard[:dealer] += 1
+    elsif player_score > dealer_score
+      prompt("Player Wins!!")
+      scoreboard[:player] += 1
+    else
+      prompt("It's a tie!")
+    end
+    prompt("Hands: (Player: #{player_score} Dealer: #{dealer_score})")
+    puts
+    puts "***** Scoreboard *****"
+    prompt("Player: #{scoreboard[:player]} Dealer: #{scoreboard[:dealer]}")
+    puts
+    if scoreboard.values.include?(5)
+      if scoreboard[:player] == 5
+        prompt("The player won 5 rounds to win the game.")
+      else
+        prompt("The dealer won 5 rounds to win the game.")
+      end
+      break
+    end
+    prompt("Hit any key to play the next round")
+    gets
   end
-  dealer_score = hand_value(dealer_hand)
-
-  display_hands(player_hand, dealer_hand)
-
-  if player_score > LIMIT
-    prompt("Player Bust!! Dealer Wins!")
-  elsif dealer_score > LIMIT
-    prompt("Dealer Bust!! Player Wins!")
-  elsif player_score < dealer_score
-    prompt("Dealer Wins!!")
-  elsif player_score > dealer_score
-    prompt("Player Wins!!")
-  else
-    prompt("It's a tie!")
-  end
-
-  prompt("Player: #{player_score} Dealer: #{dealer_score}")
   prompt("Game Over")
+  puts
   break unless play_again?
 end
 
 prompt("Thanks for playing!")
+prompt("Good Bye")
