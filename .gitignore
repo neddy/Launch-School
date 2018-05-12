@@ -1,7 +1,5 @@
 test*.rb
 \# Notes
-\# Problem Solving
-\# Create Ex Files
 .rubocop.yml
 .DS_Store
 Course/101 Programming Foundations/Lesson 5/quiz
