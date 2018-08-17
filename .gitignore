@@ -5,3 +5,5 @@ test*.rb
 Course/101 Programming Foundations/Lesson 5/quiz
 \# Archive
 \# Assesments
+*.mp4
+*.m4v
