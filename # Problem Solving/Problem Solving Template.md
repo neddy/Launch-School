@@ -1,40 +1,29 @@
-# Understand the Problem
-- Take notes on the Problem
-- Make requirements and implicit knowledge explicit
-- Input / Output
-  - What are they? What will they look like?
+# Problem Solving Template
+---
+### Understand the Problem
+(Describe the problem. Requirements. Rules and Implicit Knowledge, Important Terms)
 
 
 
 
-
-
-# Test Cases / Examples
-- Build tests
-- Define edge cases
-- Failures / Bad input - how to treat them?
-- Ask questions to verify understanding of problem / expected output.
+### Examples / Test Cases
+(Input / Output, Edge Cases? Bad input?)
 
 
 
 
-
-
-# Data Structures
-- Decide what type of data structure will suit the problem 
-- Use a structure to make the algorithm simpler
-- Understand the methods associated with different data structures
+### Data Structures
+(What data structure fits the problem and the input data?)
+(Rules / requirements for input data?)
 
 
 
 
+### Abstraction
+(Solve in 1-2 sentences, solve small problems)
 
 
 
 
-# The Algorithm
-- Use language that fits with the chosen data structure
-- Be specific
-- Don't solve big problems, break it down into smaller problems if needed
-- Use 1-2 sentences to solve problems
-- Use abstraction and push details to methods/functions
+### Algorithm / Psuedo Code
+(Create algorithm using language of chosen data structure)
