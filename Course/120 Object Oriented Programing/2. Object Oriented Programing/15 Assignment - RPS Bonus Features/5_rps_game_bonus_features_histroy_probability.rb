@@ -93,12 +93,24 @@ class Human < Player
 end
 
 class Computer < Player
+  def initialize
+    super
+    @weighted_choices = Move::VALID_CHOICES.map{ |_,v| [v, 0.2] }.to_h
+  end
+
   def set_name
     self.name = ['R2D2', 'Chappie', 'Hal'].sample
   end
 
+  def adjust_probabilities # parameter human.move or maybe just human??
+    # Code to go here...
+  end
+
   def choose
-    self.move = Move.new(Move::VALID_CHOICES.values.sample)
+    choice = @weighted_choices.max_by do |_, weight|
+      rand ** (1.0 / weight)
+    end
+    self.move = Move.new(choice.first)
   end
 end
 
@@ -211,6 +223,7 @@ class RPSGame
   def play_round
     loop do
       player_moves
+      binding.pry
       display_moves
       determine_winner
       display_round_winner
