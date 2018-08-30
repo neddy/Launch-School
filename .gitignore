@@ -1,6 +1,5 @@
 test*.rb
 \# Notes
-.rubocop.yml
 .DS_Store
 Course/101 Programming Foundations/Lesson 5/quiz
 \# Archive
