@@ -2,19 +2,35 @@
 require 'pry'
 
 module RPSHelpers
+  WIDTH = 72
   def clear_screen
     system('clear') || system('cls')
   end
 
   def input_prompt
-    print "=> "
+    print "=> ".rjust(WIDTH / 2)
   end
 
   def press_return_to_continue
-    puts "\n\n"
-    puts 'Press return to continue.'
+    puts
+    format_display('', "Press return to continue", '', true)
     gets
     clear_screen
+  end
+
+  def format_display(left, middle, right, blank_line_first = false)
+    puts if blank_line_first
+    if left == '' && right == ''
+      puts middle.center(WIDTH)
+    else
+      puts left.ljust(WIDTH / 3) +
+           middle.center(WIDTH / 3) +
+           right.rjust(WIDTH / 3)
+    end
+  end
+
+  def display_heading
+    format_display('', "-- Rock, Paper, Scissors, Lizard, Spock --", '')
   end
 
   def y_or_n?
@@ -23,10 +39,14 @@ module RPSHelpers
       input_prompt
       answer = gets.chomp.downcase
       break if ['y', 'n'].include? answer
-      puts "please enter a 'y' or 'n'"
+      invalid_choice
     end
     clear_screen
     answer == 'y' ? true : false
+  end
+
+  def invalid_choice
+    format_display('', 'That is an invalid input, please try again...', '')
   end
 end
 
@@ -97,15 +117,10 @@ class MoveHistory
   end
 
   def display_past_rounds
-    rounds = human_moves.size
-    puts "-- Past Rounds --".center(48)
-    puts format(" Round | %-12s | %-12s | Winner", human.name, computer.name)
-    puts "-" * 48
-    rounds.times do |idx|
-      hm = human_moves[idx]
-      cm = computer_moves[idx]
-      winner = winners[idx]
-      puts format("   %-2s  | %-12s | %-12s | %-8s", idx + 1, hm, cm, winner)
+    format_display('', "-- Past Rounds --", '', true)
+    format_display(human.name, "** Winner **", computer.name)
+    human_moves.size.times do |idx|
+      format_display(human_moves[idx], winners[idx], computer_moves[idx])
     end
   end
 
@@ -114,11 +129,19 @@ class MoveHistory
     human_moves.last(n).uniq == 1
   end
 
+  def human_move_fequency
+    move_fequency = Move::VALID_CHOICES.values.map do |mv|
+      [mv, human_moves.count(mv)]
+    end
+    move_fequency.to_h
+  end
+
   def human_favourite_moves
-    return [] if human_moves.empty?
-    move_counts = human_moves.uniq.map { |mv| [mv, human_moves.count(mv)] }.to_h
-    max_count = move_counts.values.max
-    favourite_moves = move_counts.select { |_, count| count == max_count }.keys
+    move_frequency = human_move_fequency
+    max_count = move_frequency.values.max
+    favourite_moves = move_frequency.select do |_, count|
+      count == max_count
+    end.keys
     weight = [(0.4 + (0.1 * max_count)), 0.95].min
     if favourite_moves.size <= 2 && max_count > 1
       { moves: favourite_moves, weight: weight }
@@ -166,31 +189,41 @@ end
 class Human < Player
   def set_name
     clear_screen
+    display_heading
     n = ''
     loop do
-      puts "What is your name?"
+      format_display('', "What is your name?", '')
       input_prompt
       n = gets.chomp
       break unless n.empty?
-      puts "Sorry, please enter your name."
+      invalid_choice
     end
     self.name = n
     clear_screen
   end
 
+  def display_valid_choices
+    format_display('', "Valid Choices", '')
+    Move::VALID_CHOICES.each do |key, value|
+      choice = if key.size == 1
+                 "(#{value[0]})#{value[1..-1]}"
+               else
+                 "(#{value[0..1]})#{value[2..-1]}"
+               end
+      format_display('', choice, '')
+    end
+  end
+
   def choose
     choice = nil
     valid_choices = Move::VALID_CHOICES
+    display_heading
+    display_valid_choices
     loop do
-      puts "Make your choice for this round:"
-      valid_choices.each do |key, value|
-        puts format("%-3s for:  %s", key, value)
-      end
       input_prompt
       choice = gets.chomp
       break if valid_choices.keys.include?(choice)
-      clear_screen
-      puts "Sorry, invalid choice.\n"
+      invalid_choice
     end
     self.move = Move.new(valid_choices[choice])
     clear_screen
@@ -257,7 +290,7 @@ class Computer < Player
     end
   end
 
-  def set_choice_weights(move_history)
+  def calculate_weights(move_history)
     if move_history.human_moves.empty? || counter_moves[:moves].empty?
       reset_weighted_choices
     else
@@ -274,27 +307,33 @@ class Computer < Player
     end
   end
 
-  def display_move_probabilities
-    puts "The probability for each move being selected was:"
-    output = weighted_choices.map do |mv, prob|
+  def probabilities_to_s(hsh)
+    output = hsh.map do |mv, prob|
       "#{mv}: #{(prob * 100).round(2)}%"
     end
-    puts output.join('  ')
+    output.join('  ')
   end
 
-  def display_counter_plan(move_history)
+  def logic_variables(move_history)
     if move_history.human_moves.empty? || expected_moves[:moves].empty?
-      puts "#{@name} did not know what move to expect."
+      expected_mvs = 'None'
+      counter_mvs = 'None'
+      weight = "N/A"
     else
       expected_mvs = expected_moves[:moves].join(' or ')
       counter_mvs = counter_moves[:moves].join(' or ')
       weight = (counter_moves[:weight] * 100).round(2)
-      puts "#{@name} expected you to select : #{expected_mvs}"
-      puts "#{@name} selected the following counter moves : #{counter_mvs}"
-      puts "#{@name} was #{weight}% confident in the expected move(s)."
     end
-    display_move_probabilities
-    puts
+    return expected_mvs, counter_mvs, weight
+  end
+
+  def display_logic(move_history)
+    expected_mvs, counter_mvs, weight = logic_variables(move_history)
+    format_display('', "-- Computer Logic --", '', true)
+    format_display('Expected Moves', 'Confidence', 'Counter Moves')
+    format_display(expected_mvs, "#{weight}%", counter_mvs)
+    format_display('', 'Probabilities', '', true)
+    format_display('', probabilities_to_s(weighted_choices), '')
   end
 
   def create_counter_plan(move_history)
@@ -302,7 +341,7 @@ class Computer < Player
       self.expected_moves = determine_expected_moves(move_history)
       self.counter_moves = determine_counter_moves
     end
-    set_choice_weights(move_history)
+    calculate_weights(move_history)
   end
 
   def select_choice
@@ -315,12 +354,11 @@ class Computer < Player
   def choose(move_history)
     create_counter_plan(move_history)
     select_choice
-    display_counter_plan(move_history) if show_logic
   end
 end
 
 class ComputerPersonalities < Computer
-  attr_accessor :generic_choice_weights, :move_preferences
+  attr_accessor :generic_weighted_choices, :move_preferences
   def initialize
     super
     set_move_preferences
@@ -340,26 +378,18 @@ class ComputerPersonalities < Computer
     self.name = 'C-3PO'
   end
 
-  def set_choice_weights(move_history)
-    self.generic_choice_weights = super
-    self.weighted_choices = generic_choice_weights.map do |mv, weight|
+  def calculate_weights(move_history)
+    self.generic_weighted_choices = super
+    self.weighted_choices = generic_weighted_choices.map do |mv, weight|
       [mv, ((@move_preferences[mv] + weight) / 2)]
     end.to_h
   end
 
-  def display_generic_move_probabilities
-    output = generic_choice_weights.map do |mv, prob|
-      "#{mv}: #{(prob * 100).round(2)}%"
-    end
-    puts output.join('  ')
-  end
-
-  def display_counter_plan(move_history)
+  def display_logic(move_history)
     super
-    puts "Before #{@name} added his personal preferences to the plan,"
-    puts "the probability for each move being selected was:"
-    display_generic_move_probabilities
-    puts
+    msg = "Probabilities Before #{name}'s Preferences Were Considered"
+    format_display('', msg, '', true)
+    format_display('', probabilities_to_s(generic_weighted_choices), '')
   end
 end
 
@@ -420,16 +450,20 @@ end
 class RPSGame
   include RPSHelpers
   attr_accessor :human, :computer, :winner, :rounds, :move_history
+  attr_accessor :current_round
+  # WIDTH = 48
 
   def initialize
     @human = Human.new
     set_computer_player
     set_round_limit
     set_show_logic
+    @current_round = 1
   end
 
   def set_computer_player
     choice = rand(4)
+    # choice = 3
     case choice
     when 0
       @computer = R2D2.new
@@ -452,6 +486,7 @@ class RPSGame
     elsif human.move < computer.move
       self.winner = computer
     end
+    add_to_score if winner
   end
 
   def choose_moves
@@ -461,14 +496,14 @@ class RPSGame
 
   def set_round_limit
     choice = nil
+    display_heading
+    msg = "Rounds for Victory?"
+    format_display('', msg, '')
     loop do
-      puts "How many rounds would you like to play to this game?"
       input_prompt
       choice = gets.chomp
       break if choice.to_i.to_s == choice
-      clear_screen
-      puts "Sorry, please entere a valid number."
-      puts
+      invalid_choice
     end
     self.rounds = choice.to_i
     clear_screen
@@ -479,61 +514,69 @@ class RPSGame
   end
 
   def show_logic?
-    puts "Would you like to display some of the " \
-          "logic behind the computer moves this game?"
+    display_heading
+    format_display('', "Display Computer Logic? (y) or (n)", '')
     y_or_n?
   end
 
-  def display_welcome_message
-    puts "Hi #{human.name}, welcome to Rock, Paper, Scissors, Lizard and Spock!"
-    puts
-  end
-
   def display_game_start
-    puts "This game you will be playing against #{computer.name}."
-    puts
-    puts "The first to win #{rounds} rounds will win the game!"
+    display_heading
+    msg = "Good luck #{human.name}!"
+    format_display('', msg, '')
+    msg = "This game you will be playing against: #{computer.name}."
+    format_display('', msg, '', true)
+    msg = "The first to win #{rounds} rounds will win the game!"
+    format_display('', msg, '', true)
     press_return_to_continue
   end
 
   def display_goodbye_message
-    puts "Thanks for playing Rock, Paper, Scissors, Lizard and Spock! Good bye!"
+    display_heading
+    format_display('', "Thanks for playing, Good bye!", '')
+  end
+
+  def who_won
+    if winner
+      "#{winner.name} won!"
+    else
+      "It's a tie!"
+    end
   end
 
   def display_round
+    display_heading
     human_name = human.name
     computer_name = computer.name
-    winner_name = winner.name if  winner
-    puts format("%-10s chose: %-8s ", human_name, human.move)
-    puts format("%-10s chose: %-8s \n\n", computer_name, computer.move)
-    if winner_name == human_name || winner_name == computer_name
-      puts "#{winner_name} won!"
-    else
-      puts "Its's a tie!"
-    end
+    format_display('', "Round: #{current_round}", '')
+    format_display(human_name, " ", computer_name)
+    format_display(human.move.to_s, who_won, computer.move.to_s)
+    computer.display_logic(move_history) if computer.show_logic
     press_return_to_continue
   end
 
   def display_score
-    hn = human.name
-    hs = human.score
-    cn = computer.name
-    cs = computer.score
-    puts "-- Current Score --".center(48)
-    puts format("      %-12s: %-2s  %-12s: %-2s", hn, hs, cn, cs)
-    puts
+    display_heading
+    human_score = "#{human.score}/#{rounds}"
+    computer_score = "#{computer.score}/#{rounds}"
+    format_display(human.name, "-- Current Score --", computer.name)
+    format_display(human_score, " ", computer_score)
   end
 
   def display_game_winner
-    if human.score > computer.score
-      puts "#{human.name} won #{rounds} rounds to win the game!"
-    else
-      puts "#{computer.name} won #{rounds} rounds to win the game!"
-    end
+    display_heading
+    game_winner = if human.score > computer.score
+                    human
+                  else
+                    computer
+                  end
+    format_display('', "#{game_winner.name} won the game!", '')
+    msg = "#{game_winner.name} won #{game_winner.score}"\
+    " out of #{current_round} rounds."
+    format_display('', msg, '')
   end
 
   def play_again?
-    puts "Would you like to play again? (y,n)"
+    format_display('', "Would you like to play again? (y) or (n)", '')
     y_or_n?
   end
 
@@ -542,15 +585,15 @@ class RPSGame
     set_computer_player
     set_round_limit
     set_show_logic
+    self.current_round = 1
   end
 
   def reset_winner
     self.winner = nil
   end
 
-  def record_round
-    add_to_score if winner
-    move_history.add_round(winner)
+  def increment_round
+    self.current_round += 1
   end
 
   def play_game
@@ -558,17 +601,17 @@ class RPSGame
     loop do
       choose_moves
       determine_winner
-      record_round
       display_round
       display_score
+      move_history.add_round(winner)
       move_history.display
       break if human.score == @rounds || computer.score == @rounds
+      increment_round
       reset_winner
     end
   end
 
   def play
-    display_welcome_message
     loop do
       display_game_start
       play_game

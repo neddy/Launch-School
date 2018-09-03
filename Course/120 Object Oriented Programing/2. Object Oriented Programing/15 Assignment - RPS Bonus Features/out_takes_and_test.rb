@@ -86,3 +86,7 @@ end
 # end
 
 # p counter_moves(['lizard', 'scissors'])
+
+
+# elsif middle == ''
+  # puts left.rjust(WIDTH / 2) + right.ljust(WIDTH / 2)
