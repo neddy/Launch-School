@@ -165,6 +165,7 @@ end
 
 class Human < Player
   def set_name
+    clear_screen
     n = ''
     loop do
       puts "What is your name?"
@@ -207,11 +208,6 @@ class Computer < Player
     "lizard" => ["rock", "scissors"],
     "spock" => ["paper", "lizard"]
   }
-
-  def initialize
-    super
-    reset_weighted_choices
-  end
 
   def set_name
     self.name = ['R2D2', 'Chappie', 'Hal'].sample
@@ -261,11 +257,11 @@ class Computer < Player
     end
   end
 
-  def change_weights
-    c_mvs = counter_moves[:moves]
-    if c_mvs.empty?
+  def set_choice_weights(move_history)
+    if move_history.human_moves.empty? || counter_moves[:moves].empty?
       reset_weighted_choices
     else
+      c_mvs = counter_moves[:moves]
       superior_mv_weight = counter_moves[:weight] / c_mvs.size
       inferior_mv_weight = (1 - counter_moves[:weight]) / (5.0 - c_mvs.size)
       self.weighted_choices = weighted_choices.map do |mv, _|
@@ -288,30 +284,136 @@ class Computer < Player
 
   def display_counter_plan(move_history)
     if move_history.human_moves.empty? || expected_moves[:moves].empty?
-      puts "The computer did not know what move to expect."
+      puts "#{@name} did not know what move to expect."
     else
       expected_mvs = expected_moves[:moves].join(' or ')
       counter_mvs = counter_moves[:moves].join(' or ')
       weight = (counter_moves[:weight] * 100).round(2)
-      puts "The computer expected you to select               : #{expected_mvs}"
-      puts "The computer selected the following counter moves : #{counter_mvs}"
-      puts "The computer gave a weight of #{weight}% to the counter moves."
+      puts "#{@name} expected you to select : #{expected_mvs}"
+      puts "#{@name} selected the following counter moves : #{counter_mvs}"
+      puts "#{@name} was #{weight}% confident in the expected move(s)."
     end
     display_move_probabilities
     puts
   end
 
-  def choose(move_history)
+  def create_counter_plan(move_history)
     unless move_history.human_moves.empty?
       self.expected_moves = determine_expected_moves(move_history)
       self.counter_moves = determine_counter_moves
-      change_weights
     end
+    set_choice_weights(move_history)
+  end
+
+  def select_choice
     choice = @weighted_choices.max_by do |_, weight|
       rand**(1.0 / weight)
     end
     self.move = Move.new(choice.first)
+  end
+
+  def choose(move_history)
+    create_counter_plan(move_history)
+    select_choice
     display_counter_plan(move_history) if show_logic
+  end
+end
+
+class ComputerPersonalities < Computer
+  attr_accessor :generic_choice_weights, :move_preferences
+  def initialize
+    super
+    set_move_preferences
+  end
+
+  def set_move_preferences
+    @move_preferences = {
+      "rock" => 0.2,
+      "paper" => 0.2,
+      "scissors" => 0.2,
+      "lizard" => 0.2,
+      "spock" => 0.2
+    }
+  end
+
+  def set_name
+    self.name = 'C-3PO'
+  end
+
+  def set_choice_weights(move_history)
+    self.generic_choice_weights = super
+    self.weighted_choices = generic_choice_weights.map do |mv, weight|
+      [mv, ((@move_preferences[mv] + weight) / 2)]
+    end.to_h
+  end
+
+  def display_generic_move_probabilities
+    output = generic_choice_weights.map do |mv, prob|
+      "#{mv}: #{(prob * 100).round(2)}%"
+    end
+    puts output.join('  ')
+  end
+
+  def display_counter_plan(move_history)
+    super
+    puts "Before #{@name} added his personal preferences to the plan,"
+    puts "the probability for each move being selected was:"
+    display_generic_move_probabilities
+    puts
+  end
+end
+
+class R2D2 < ComputerPersonalities
+  def set_move_preferences
+    @move_preferences = {
+      "rock" => 0.1,
+      "paper" => 0.1,
+      "scissors" => 0.3,
+      "lizard" => 0.1,
+      "spock" => 0.4
+    }
+  end
+
+  def set_name
+    self.name = 'R2D2'
+  end
+end
+
+class C3PO < ComputerPersonalities
+  def set_name
+    self.name = 'C-3PO'
+  end
+end
+
+class Chappie < ComputerPersonalities
+  def set_move_preferences
+    @move_preferences = {
+      "rock" => 0.15,
+      "paper" => 0.15,
+      "scissors" => 0.2,
+      "lizard" => 0.3,
+      "spock" => 0.2
+    }
+  end
+
+  def set_name
+    self.name = 'Chappie'
+  end
+end
+
+class Hal < ComputerPersonalities
+  def set_move_preferences
+    @move_preferences = {
+      "rock" => 0.96,
+      "paper" => 0.01,
+      "scissors" => 0.01,
+      "lizard" => 0.01,
+      "spock" => 0.01
+    }
+  end
+
+  def set_name
+    self.name = 'Hal'
   end
 end
 
@@ -321,9 +423,23 @@ class RPSGame
 
   def initialize
     @human = Human.new
-    @computer = Computer.new
+    set_computer_player
     set_round_limit
     set_show_logic
+  end
+
+  def set_computer_player
+    choice = rand(4)
+    case choice
+    when 0
+      @computer = R2D2.new
+    when 1
+      @computer = C3PO.new
+    when 2
+      @computer = Chappie.new
+    when 3
+      @computer = Hal.new
+    end
   end
 
   def add_to_score
@@ -363,8 +479,8 @@ class RPSGame
   end
 
   def show_logic?
-    puts "Would you like to display some of the\
- logic behind the computer moves this game?"
+    puts "Would you like to display some of the " \
+          "logic behind the computer moves this game?"
     y_or_n?
   end
 
@@ -387,7 +503,7 @@ class RPSGame
   def display_round
     human_name = human.name
     computer_name = computer.name
-    winner_name = winner.name
+    winner_name = winner.name if  winner
     puts format("%-10s chose: %-8s ", human_name, human.move)
     puts format("%-10s chose: %-8s \n\n", computer_name, computer.move)
     if winner_name == human_name || winner_name == computer_name
@@ -423,7 +539,7 @@ class RPSGame
 
   def reset_game
     human.reset
-    self.computer = Computer.new
+    set_computer_player
     set_round_limit
     set_show_logic
   end
