@@ -287,7 +287,7 @@ class Computer < Player
       # Player is expected to move to next move
       { moves: [next_move], weight: 0.80 }
     else # tie
-      # Expect human's favourite moves
+      # Player is expected to use favourite move
       move_history.human_favourite_moves
     end
   end
