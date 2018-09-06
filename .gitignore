@@ -1,8 +1,7 @@
 test*.rb
-\# Notes
+\#Notes
 .DS_Store
-Course/101 Programming Foundations/Lesson 5/quiz
-\# Archive
-\# Assesments
+\#Archive
+\#Assesments
 *.mp4
 *.m4v
