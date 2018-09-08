@@ -1,7 +1,3 @@
-require 'pry'
-
-# Need to complete 10 and 11 on this page: https://launchschool.com/lessons/97babc46/assignments/d791cc06
-
 module GameHelper
   WIDTH = 48
 
@@ -38,6 +34,7 @@ module GameHelper
 
   def display_heading(heading)
     output_to_diplay('', heading, '')
+    puts
   end
 
   def y_or_n?
@@ -56,12 +53,9 @@ module GameHelper
   end
 end
 
-class Player
-  PLAYER1_MARKER = 'X'
-  PLAYER2_MARKER = 'O'
+class TTTPlayer
   include GameHelper
-  attr_accessor :name, :score
-  attr_reader :marker
+  attr_accessor :name, :score, :marker
 
   def initialize
     set_name
@@ -73,12 +67,7 @@ class Player
   end
 end
 
-class Human < Player
-  def initialize
-    super
-    @marker = PLAYER1_MARKER
-  end
-
+class Human < TTTPlayer
   def set_name
     clear_screen
     display_heading(TTTGame::HEADING)
@@ -94,30 +83,42 @@ class Human < Player
     clear_screen
   end
 
-  def choice(board)
+  def move!(board)
     available_choices = board.empty_square_keys
-    n = ''
+    available_choices_string = board.empty_squares_string
+    human_choice = ''
     output_to_diplay('', "Please choose one of the following squares:", '')
-    output_to_diplay('', "#{available_choices.join(', ')}", '')
+    output_to_diplay('', available_choices_string, '')
     loop do
       input_prompt
-      n = gets.chomp.strip
-      break if n.to_i.to_s == n && available_choices.include?(n.to_i)
+      human_choice = gets.chomp
+      break if human_choice.to_i.to_s == human_choice &&
+               available_choices.include?(human_choice.to_i)
       invalid_choice
-      output_to_diplay('', "Choose from: #{available_choices.join(', ')}", '')
+      output_to_diplay('', "Choose from: #{available_choices_string}", '')
     end
-    n.to_i
+    board[human_choice.to_i] = marker
   end
 end
 
-class Computer < Player
-  def initialize
-    super
-    @marker = PLAYER2_MARKER
+class Computer < TTTPlayer
+  def set_name
+    self.name = %w[R2D2 C-3PO Hal Chappie].sample
   end
 
-  def set_name
-    self.name = %w(R2D2 C-3PO Hal Chappie).sample
+  def move!(board, human_marker)
+    at_risk_square = board.find_at_risk_square(human_marker)
+    winning_square = board.find_winning_square(marker)
+    computer_choice = if winning_square
+                        winning_square
+                      elsif at_risk_square
+                        at_risk_square
+                      elsif board.empty_square_keys.include?(5)
+                        5
+                      else
+                        board.empty_square_keys.sample
+                      end
+    board[computer_choice] = marker
   end
 end
 
@@ -151,8 +152,11 @@ class Board
     reset
   end
 
+  # rubocop:disable Metrics/AbcSize
+  # rubocop:disable Metrics/LineLength
   def draw
-    blank_line_and_output_to_display('', "     |     |     ", '')
+    puts
+    output_to_diplay('', "     |     |     ", '')
     output_to_diplay('', " #{squares[1]}  |  #{squares[2]}  |  #{squares[3]}  ", '')
     output_to_diplay('', "     |     |     ", '')
     output_to_diplay('', "-----+-----+-----", '')
@@ -163,7 +167,10 @@ class Board
     output_to_diplay('', "     |     |     ", '')
     output_to_diplay('', " #{squares[7]}  |  #{squares[8]}  |  #{squares[9]}  ", '')
     output_to_diplay('', "     |     |     ", '')
+    puts
   end
+  # rubocop:enable Metrics/LineLength
+  # rubocop:enable Metrics/AbcSiz
 
   def reset
     (1..9).each { |key| @squares[key] = Square.new }
@@ -175,6 +182,10 @@ class Board
 
   def empty_square_keys
     @squares.select { |_, square| square.empty? }.keys
+  end
+
+  def empty_squares_string
+    empty_square_keys.join(', ').gsub(/, (\d+)$/, ' or \1')
   end
 
   def full?
@@ -198,28 +209,86 @@ class Board
   def all_marked_with?(line, marker)
     line.all? { |key| squares[key].marker == marker }
   end
+
+  def two_of_three_marked?(line, marker)
+    line.count { |key| squares[key].marker == marker } == 2 &&
+      line.one? { |key| !squares[key].marker }
+  end
+
+  def find_at_risk_square(opponent_marker)
+    find_winning_square(opponent_marker)
+  end
+
+  def find_winning_square(marker)
+    WINNING_LINES.each do |line|
+      if two_of_three_marked?(line, marker)
+        return line.select { |key| !squares[key].marker }.first
+      end
+    end
+    nil
+  end
 end
 
 class TTTGame
   include GameHelper
 
   HEADING = "-- Tic Tac Toe --"
+  PLAYER1_MARKER = 'X'
+  PLAYER2_MARKER = 'O'
 
-  attr_accessor :current_player
-  attr_reader :board, :human, :computer, :first_player
+  attr_accessor :current_player, :rounds, :first_player
+  attr_reader :board, :human, :computer
 
   def initialize
     @board = Board.new
     @human = Human.new
     @computer = Computer.new
-    @first_player = human
-    @current_player = @first_player
+  end
+
+  def play
+    display_welcome_message
+    set_markers
+    rounds_for_victory
+    loop do
+      play_game
+      break unless play_again?
+      display_play_again
+      reset_game
+    end
+    display_goodbye_message
+  end
+
+  private
+
+  def play_game
+    pick_first_player
+    loop do
+      display_first_player
+      play_round
+      break if someone_won_game?
+      reset_round
+    end
+    display_game_result
+  end
+
+  def play_round
+    self.current_player = first_player
+    display_board
+    loop do
+      current_player_moves
+      display_board
+      break if board.someone_won? || board.full?
+    end
+    increment_score
+    display_board
+    display_round_result
   end
 
   def display_welcome_message
     clear_screen
     display_heading(HEADING)
     output_to_diplay('', "Hi #{human.name}, welcome to Tic Tac Toe", '')
+    press_return_to_continue
   end
 
   def display_goodbye_message
@@ -229,38 +298,29 @@ class TTTGame
   def display_board
     clear_screen
     display_heading(HEADING)
-    output_to_diplay("#{human.name} is: #{human.marker}", '', "#{computer.name} is: #{computer.marker}")
+    human_name_and_marker = "#{human.name} is: #{human.marker}"
+    computer_name_and_marker = "#{computer.name} is: #{computer.marker}"
+    score = "#{human.score}/#{rounds} : Score : #{computer.score}/#{rounds}"
+    output_to_diplay(human_name_and_marker, score, computer_name_and_marker)
     board.draw
   end
 
-  def human_move
-    human_choice = human.choice(board)
-    @board[human_choice] = human.marker
+  def display_round_result
+    winning_phrase = if board.winning_marker == human.marker
+                       "#{human.name} won!"
+                     elsif board.winning_marker == computer.marker
+                       "#{computer.name} won!"
+                     else
+                       "It's a tie!"
+                     end
+    output_to_diplay('', winning_phrase, '')
+    press_return_to_continue
   end
 
-  def computer_move
-    computer_choice = board.empty_square_keys.sample
-    @board[computer_choice] = computer.marker
-  end
-
-  def display_result
-    if board.winning_marker == human.marker
-      output_to_diplay('', "You won!", '')
-    elsif board.winning_marker == computer.marker
-      output_to_diplay('', "Computer won!", '')
-    else
-      output_to_diplay('', "It's a tie!", '')
-    end
-  end
-
-  def play_again?
-    output_to_diplay('', "Would you like to play again?", '')
-    y_or_n?
-  end
-
-  def reset
-    board.reset
-    @current_player = @first_player
+  def display_game_result
+    display_heading(HEADING)
+    msg = "#{who_won_game} won #{rounds} round(s) to win the game!"
+    output_to_diplay('', msg, '')
   end
 
   def display_play_again
@@ -268,40 +328,128 @@ class TTTGame
     press_return_to_continue
   end
 
-  def swap_current_player
-    if current_player == human
-      self.current_player = computer
-    else
-      self.current_player = human
+  def display_first_player
+    display_heading(HEADING)
+    output_to_diplay('', "#{first_player.name} will go first.", '')
+    press_return_to_continue
+  end
+
+  def play_again?
+    output_to_diplay('', "Would you like to play again?", '')
+    y_or_n?
+  end
+
+  def increment_score
+    if board.winning_marker == human.marker
+      human.score += 1
+    elsif board.winning_marker == computer.marker
+      computer.score += 1
     end
+  end
+
+  def who_won_game
+    if human.score == rounds
+      human.name
+    else
+      computer.name
+    end
+  end
+
+  def someone_won_game?
+    rounds == human.score || rounds == computer.score
+  end
+
+  def rounds_for_victory
+    display_heading(HEADING)
+    choice = ''
+    output_to_diplay('', "How many rounds for victory?", '')
+    loop do
+      input_prompt
+      choice = gets.chomp
+      break if choice.to_i.to_s == choice
+      invalid_choice
+      output_to_diplay('', "Please enter only numbers", '')
+    end
+    clear_screen
+    self.rounds = choice.to_i
+  end
+
+  def reset_round
+    board.reset
+    alternate_first_player
+  end
+
+  def reset_game
+    board.reset
+    human.reset
+    computer.reset
+  end
+
+  def pick_first_player
+    self.first_player = if [1, 2].sample == 1
+                          human
+                        else
+                          computer
+                        end
+  end
+
+  def alternate_first_player
+    self.first_player = if first_player == human
+                          computer
+                        else
+                          human
+                        end
+  end
+
+  def set_markers
+    if custom_markers?
+      human.marker = player_pick_marker
+      characters_left = ('A'..'Z').reject { |char| char == human.marker }
+      computer.marker = characters_left.sample
+    else
+      human.marker = PLAYER1_MARKER
+      computer.marker = PLAYER2_MARKER
+    end
+  end
+
+  def custom_markers?
+    display_heading(HEADING)
+    output_to_diplay('', "Would you like to set custom markers this game?", '')
+    response = y_or_n?
+    clear_screen
+    response
+  end
+
+  def player_pick_marker
+    display_heading(HEADING)
+    choice = ''
+    output_to_diplay('', "Please enter a character to use for your marker.", '')
+    loop do
+      output_to_diplay('', "Please choose one character between A - Z.", '')
+      input_prompt
+      choice = gets.chomp.upcase
+      break if ('A'..'Z').cover?(choice) && choice.size == 1
+      invalid_choice
+    end
+    clear_screen
+    choice
+  end
+
+  def swap_current_player
+    self.current_player = if current_player == human
+                            computer
+                          else
+                            human
+                          end
   end
 
   def current_player_moves
     if current_player == human
-      human_move
-      swap_current_player
+      human.move!(board)
     else
-      computer_move
-      swap_current_player
+      computer.move!(board, human.marker)
     end
-  end
-
-  def play
-      display_welcome_message
-      loop do
-        display_board
-        loop do
-          current_player_moves
-          display_board
-          break if board.someone_won? || board.full?
-        end
-        display_board
-        display_result
-        break unless play_again?
-        reset
-        display_play_again
-      end
-      display_goodbye_message
+    swap_current_player
   end
 end
 
