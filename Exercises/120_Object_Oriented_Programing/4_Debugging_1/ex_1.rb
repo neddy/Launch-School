@@ -12,7 +12,7 @@ class Library
   end
 
   def display_books
-    books.each { |book| book.display_data}
+    books.each { |book| book.display_data }
   end
 end
 

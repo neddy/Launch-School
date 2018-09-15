@@ -1,7 +1,9 @@
 test*.rb
+test*.md
 \#Notes
 .DS_Store
 \#Archive
 \#Assesments
 *.mp4
 *.m4v
+quiz*
