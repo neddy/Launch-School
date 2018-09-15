@@ -1,16 +1,11 @@
-require 'pry'
-
 module GameHelper
   WIDTH = 48
 
   def output(*msg)
     case msg.size
-    when 1
-      output_center(msg)
-    when 2
-      output_left_right(msg)
-    when 3
-      output_left_center_right(msg)
+    when 1 then output_center(msg)
+    when 2 then output_left_right(msg)
+    when 3 then output_left_center_right(msg)
     end
   end
 
@@ -30,7 +25,7 @@ module GameHelper
 
   def display_heading(heading)
     output(heading)
-    puts
+    output_blank_line
   end
 
   def input_prompt
@@ -50,9 +45,9 @@ module GameHelper
   end
 
   def press_return_to_continue
-    puts
+    output_blank_line
     output("Press return to continue...")
-    gets
+    output_blank_line
   end
 
   def y_and_n?
@@ -68,20 +63,7 @@ module GameHelper
   end
 end
 
-class Participant
-  include GameHelper
-
-  attr_accessor :hand, :name
-
-  def initialize
-    set_name
-    @hand = []
-  end
-
-  def reset
-    self.hand = []
-  end
-
+module Hand
   def busted?
     hand_value > 21
   end
@@ -115,6 +97,24 @@ class Participant
     end
   end
 
+  def display_hand_hide_second_card
+    cards_array = create_cards_output_array
+    hide_second_card!(cards_array)
+    output_cards(cards_array)
+  end
+
+  def hide_second_card!(cards_array)
+    cards_array[1] = [
+      "┌-----------┐",
+      "|░░░░░░░░░░░|",
+      "|░░░░░░░░░░░|",
+      "|░░░░░░░░░░░|",
+      "|░░░░░░░░░░░|",
+      "|░░░░░░░░░░░|",
+      "└-----------┘"
+    ]
+  end
+
   def hand_value
     total = 0
     aces = 0
@@ -132,6 +132,22 @@ class Participant
   end
 end
 
+class Participant
+  include GameHelper
+  include Hand
+
+  attr_accessor :hand, :name
+
+  def initialize
+    set_name
+    @hand = []
+  end
+
+  def reset
+    self.hand = []
+  end
+end
+
 class Player < Participant
   def set_name
     name = ''
@@ -139,7 +155,7 @@ class Player < Participant
     loop do
       input_prompt
       name = gets.chomp.strip
-      break unless name.empty?
+      break unless name.empty? || name.count("0-z") < 1
       invalid_input
     end
     clear_screen
@@ -150,24 +166,6 @@ end
 class Dealer < Participant
   def set_name
     self.name = %w[Chappie Hal R2D2 C-3PO].sample
-  end
-
-  def display_hand_hide_second_card
-    cards_array = create_cards_output_array
-    hide_second_card!(cards_array)
-    output_cards(cards_array)
-  end
-
-  def hide_second_card!(cards_array)
-    cards_array[1] = [
-      "┌-----------┐",
-      "|░░░░░░░░░░░|",
-      "|░░░░░░░░░░░|",
-      "|░░░░░░░░░░░|",
-      "|░░░░░░░░░░░|",
-      "|░░░░░░░░░░░|",
-      "└-----------┘"
-    ]
   end
 end
 
@@ -241,7 +239,7 @@ class TwentyOneGame
   def play
     display_welcome
     loop do
-      start_game
+      play_round
       break unless play_again?
       display_play_again
       reset_game
@@ -265,7 +263,7 @@ class TwentyOneGame
   end
 
   def play_again?
-    puts
+    output_blank_line
     output("Would you like to play again?")
     y_and_n?
   end
@@ -277,7 +275,7 @@ class TwentyOneGame
     dealer.reset
   end
 
-  def start_game
+  def play_round
     deal_cards
     display_hands
     player_turn
@@ -315,6 +313,9 @@ class TwentyOneGame
     end
   end
 
+  # rubocop:disable Metrics/AbcSize
+  # disabled cop as after a few times refactoring,
+  # I think this is the most readable form.
   def dealer_turn
     loop do
       display_hands
@@ -325,11 +326,26 @@ class TwentyOneGame
     end
     output("#{dealer.name} stays.") unless dealer.busted?
   end
+  # rubocop:enable Metrics/AbcSize
 
   def deal_cards
     2.times do
       @player.hand << shuffled_cards.dispense_one
       @dealer.hand << shuffled_cards.dispense_one
+    end
+  end
+
+  def determine_result
+    if player.busted?
+      :player_busted
+    elsif dealer.busted?
+      :dealer_busted
+    elsif player.hand_value > dealer.hand_value
+      :player_won
+    elsif player.hand_value < dealer.hand_value
+      :dealer_won
+    else
+      :tie
     end
   end
 
@@ -375,17 +391,14 @@ class TwentyOneGame
   end
 
   def show_results
+    result = determine_result
     output_blank_line
-    if player.busted?
-      display_player_busted
-    elsif dealer.busted?
-      display_dealer_busted
-    elsif player.hand_value > dealer.hand_value
-      display_player_won
-    elsif player.hand_value < dealer.hand_value
-      display_dealer_won
-    else
-      display_tie
+    case result
+    when :player_busted then display_player_busted
+    when :dealer_busted then display_dealer_busted
+    when :player_won then display_player_won
+    when :dealer_won then display_dealer_won
+    when :tie then display_tie
     end
   end
 end
