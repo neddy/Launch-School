@@ -1,5 +1,7 @@
 test*.rb
 test*.md
+temp*.rb
+temp*.md
 \#Notes
 .DS_Store
 \#Archive
