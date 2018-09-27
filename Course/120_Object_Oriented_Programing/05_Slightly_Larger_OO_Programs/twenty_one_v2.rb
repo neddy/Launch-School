@@ -96,11 +96,8 @@ class Hand
   attr_accessor :cards, :second_card_hidden
 
   def adjust_total_for_aces(total, aces)
-    aces_reduced_to_one = 0
-    loop do
-      break if total <= 21 || aces == aces_reduced_to_one
-      total -= 10
-      aces_reduced_to_one += 1
+    aces.times do
+      total -= 10 if total <= 21
     end
     total
   end
