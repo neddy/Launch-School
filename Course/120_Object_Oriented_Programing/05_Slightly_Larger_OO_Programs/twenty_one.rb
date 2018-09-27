@@ -39,7 +39,7 @@ module GameHelper
   def press_return_to_continue
     output_blank_line
     output_center("Press return to continue...")
-    output_blank_line
+    gets
   end
 
   def y_and_n?
@@ -58,16 +58,11 @@ end
 class Hand
   def initialize
     @cards = []
+    self.second_card_hidden = false
   end
 
   def display
     cards_output_array = create_cards_output_array
-    output_cards(cards_output_array)
-  end
-
-  def display_with_second_card_hidden
-    cards_output_array = create_cards_output_array
-    hide_second_card!(cards_output_array)
     output_cards(cards_output_array)
   end
 
@@ -85,9 +80,17 @@ class Hand
     cards << card
   end
 
+  def hide_second_card
+    self.second_card_hidden = true
+  end
+
+  def unhide_second_card
+    self.second_card_hidden = false
+  end
+
   private
 
-  attr_accessor :cards
+  attr_accessor :cards, :second_card_hidden
 
   def adjust_total_for_aces(total, aces)
     aces_reduced_to_one = 0
@@ -110,7 +113,7 @@ class Hand
   end
 
   def create_cards_output_array
-    cards.map do |card|
+    output_array = cards.map do |card|
       [
         "┌-----------┐",
         "|#{card.rank.ljust(2)}         |",
@@ -121,6 +124,8 @@ class Hand
         "└-----------┘"
       ]
     end
+    hide_second_card!(output_array) if second_card_hidden
+    output_array
   end
 
   def hide_second_card!(cards_array)
@@ -139,7 +144,7 @@ end
 class Participant
   include GameHelper
 
-  attr_accessor :name
+  attr_accessor :name, :hand
 
   def initialize
     set_name
@@ -151,8 +156,10 @@ class Participant
     self.stay = false
   end
 
-  def draw_card(deck)
-    hand << deck.draw_one
+  def deal(deck)
+    2.times do
+      draw_card(deck)
+    end
   end
 
   def busted?
@@ -169,7 +176,11 @@ class Participant
 
   private
 
-  attr_accessor :stay, :hand
+  attr_accessor :stay
+
+  def draw_card(deck)
+    hand << deck.draw_one
+  end
 end
 
 class Player < Participant
@@ -217,7 +228,7 @@ end
 class Dealer < Participant
   def reset
     super
-    self.hide_second_card = true
+    hand.hide_second_card
   end
 
   def take_turn(deck)
@@ -231,32 +242,14 @@ class Dealer < Participant
     sleep(1)
   end
 
-  def unhide_second_card
-    self.hide_second_card = false
-  end
-
   def stay?
     stay
   end
 
-  def display_hand
-    if hide_second_card?
-      hand.display_with_second_card_hidden
-    else
-      super
-    end
-  end
-
   private
-
-  attr_accessor :hide_second_card
 
   def set_name
     self.name = %w[Chappie Hal R2D2 C-3PO].sample
-  end
-
-  def hide_second_card?
-    hide_second_card
   end
 end
 
@@ -324,7 +317,6 @@ class TwentyOneGame
     @deck = Deck.new
     @player = Player.new
     @dealer = Dealer.new
-    @hide_dealer_second_card = true
   end
 
   def play
@@ -347,7 +339,7 @@ class TwentyOneGame
     deal_cards
     display_hands
     take_turn(player)
-    dealer.unhide_second_card
+    dealer.hand.unhide_second_card
     display_hands
     unless player.busted?
       take_turn(dealer)
@@ -377,10 +369,8 @@ class TwentyOneGame
   end
 
   def deal_cards
-    2.times do
-      player.draw_card(deck)
-      dealer.draw_card(deck)
-    end
+    player.deal(deck)
+    dealer.deal(deck)
   end
 
   def determine_result
