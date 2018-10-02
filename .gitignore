@@ -9,3 +9,5 @@ temp*.md
 *.mp4
 *.m4v
 quiz*
+.sync
+Icon?
