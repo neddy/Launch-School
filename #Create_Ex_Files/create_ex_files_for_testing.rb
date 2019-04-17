@@ -1,4 +1,4 @@
-EXERCISES = 1
+EXERCISES = 10
 
 (1..EXERCISES).each do |n|
   filename = "ex_#{n}.rb"
