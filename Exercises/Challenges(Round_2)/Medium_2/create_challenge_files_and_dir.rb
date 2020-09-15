@@ -1,7 +1,7 @@
 require 'fileutils'
 
 EX_NO = 10
-EX_NAME = "roman_numerals"
+EX_NAME = "diamond"
 
 ex_dir = "ex_#{EX_NO}"
 
