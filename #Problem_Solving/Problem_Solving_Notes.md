@@ -1,3 +1,5 @@
+# [LS Problem Solving](https://launchschool.com/gists/c013accd)
+
 # Understand the Problem
 - Take notes on the Problem
 - Make requirements and implicit knowledge explicit
