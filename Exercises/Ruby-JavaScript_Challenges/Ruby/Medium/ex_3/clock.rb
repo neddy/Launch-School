@@ -27,6 +27,7 @@ class Clock
   end
 
   protected
+
   attr_reader :time_in_minutes
 end
 
